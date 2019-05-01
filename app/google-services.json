@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "655732963419-qaeemjpc6nufib79k4kf4tte497cfdun.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.maruf.tourmate",
+            "certificate_hash": "329ca7acd8a0342aa3110328457d299f8e28c6dc"
+          }
+        },
+        {
           "client_id": "655732963419-ea1fpd9qj6jt00m3jq8b75au7l3tr54c.apps.googleusercontent.com",
           "client_type": 3
         }

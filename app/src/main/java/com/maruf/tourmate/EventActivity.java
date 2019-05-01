@@ -1,6 +1,10 @@
 package com.maruf.tourmate;
 
 import android.Manifest;
+import android.app.DatePickerDialog;
+import android.app.Dialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -9,23 +13,53 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
-import android.support.design.widget.Snackbar;
+import android.support.design.widget.TextInputEditText;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.DatePicker;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.maruf.tourmate.Adapters.EventsAdapter;
+import com.maruf.tourmate.Adapters.ExpenseAdapter;
+import com.maruf.tourmate.Fragments.EventDetailFragment;
+import com.maruf.tourmate.Fragments.EventListFragment;
+import com.maruf.tourmate.Models.Event;
+import com.maruf.tourmate.Models.Expense;
 
-public class EventActivity extends AppCompatActivity  implements NavigationView.OnNavigationItemSelectedListener{
+import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+
+public class EventActivity extends AppCompatActivity implements
+        NavigationView.OnNavigationItemSelectedListener,
+        EventsAdapter.EventAdapterInterface,
+        ExpenseAdapter.ExpenseAdapterInterface {
 
 
     private double lat = 0.0;
@@ -34,6 +68,19 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
     LocationManager locationManager;
     FusedLocationProviderClient locationProviderClient;
 
+    FirebaseAuth firebaseAuth;
+    FirebaseDatabase firebaseDatabase;
+    DatabaseReference databaseReference;
+    String uid = "";
+    List<Event> eventList = new ArrayList<>();
+
+    FragmentManager fragmentManager;
+    Context context;
+
+    EventListChangedInterface eventListChangedInterface;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -41,14 +88,6 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -59,16 +98,64 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-
-
-
-
-
-
-
         locationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         checkLocationPermission();
+
+
+        fragmentManager = getSupportFragmentManager();
+
+        FragmentTransaction ft = fragmentManager.beginTransaction();
+
+        EventListFragment eventListFragment = new EventListFragment();
+
+
+        eventListChangedInterface = eventListFragment;
+
+
+        ft.add(R.id.fragmentContainer, eventListFragment);
+        ft.commit();
+
+
+
+
+        firebaseAuth = FirebaseAuth.getInstance();
+
+        if (firebaseAuth.getUid() != null) {
+            uid = firebaseAuth.getUid();
+        }
+        firebaseDatabase = FirebaseDatabase.getInstance();
+
+
+        databaseReference = firebaseDatabase.getReference().child("Users").child(uid)
+                .child("Events");
+
+        databaseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                eventList.clear();
+
+                for (DataSnapshot eSnapshot : dataSnapshot.getChildren()) {
+
+                    eventList.add(eSnapshot.getValue(Event.class));
+
+
+                }
+                eventListChangedInterface.onEventListChanged(eventList);
+
+
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+
+
+
 
     }
 
@@ -91,8 +178,7 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 isLocationPermissionGranted = true;
                 getDeviceCurrentLocation();
-            }
-            else checkLocationPermission();
+            } else checkLocationPermission();
         }
     }
 
@@ -101,6 +187,16 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
 
         if (isLocationPermissionGranted) {
 
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
             locationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
                 @Override
                 public void onSuccess(Location location) {
@@ -122,7 +218,18 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
-            super.onBackPressed();
+
+            int count = getSupportFragmentManager().getBackStackEntryCount();
+
+            if (count == 0) {
+                moveTaskToBack(true);
+
+            } else {
+                startActivity(getIntent());
+                finish();
+            }
+
+
         }
     }
 
@@ -172,4 +279,165 @@ public class EventActivity extends AppCompatActivity  implements NavigationView.
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+
+
+
+
+
+    private void updateEvent(final int position){
+
+        final Dialog updateDialog = new Dialog(EventActivity.this);
+        updateDialog.setTitle("Update Event");
+        updateDialog.setContentView(R.layout.add_event_layout);
+        final TextInputEditText titleET = updateDialog.findViewById(R.id.titletET);
+        final TextInputEditText startET = updateDialog.findViewById(R.id.startET);
+        final TextInputEditText destinationET = updateDialog.findViewById(R.id.destinationET);
+        final TextInputEditText tourDateET = updateDialog.findViewById(R.id.tourDateET);
+        final TextInputEditText tourBudgetET = updateDialog.findViewById(R.id.tourBudgetET);
+
+        titleET.setText(eventList.get(position).getEventTitle());
+        tourDateET.setText(new SimpleDateFormat("dd-MM-yyyy")
+                .format(new Date(Long.valueOf(eventList.get(position).getStartDate()))));
+        tourBudgetET.setText(eventList.get(position).getBudget());
+
+        String[] toFrom = eventList.get(position).getFromTo().split(" To ",2);
+
+        startET.setText(toFrom[0]);
+        destinationET.setText(toFrom[1]);
+
+        final TextView addTV = updateDialog.findViewById(R.id.addTV);
+        addTV.setText("Update");
+        TextView cancelTV = updateDialog.findViewById(R.id.cancelTV);
+
+        final Calendar myCalendar = Calendar.getInstance();
+
+        tourDateET.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+
+
+                new DatePickerDialog(context, new DatePickerDialog.OnDateSetListener() {
+
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int monthOfYear,
+                                          int dayOfMonth) {
+
+                        myCalendar.set(Calendar.YEAR, year);
+                        myCalendar.set(Calendar.MONTH, monthOfYear);
+                        myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                        tourDateET.setText( new SimpleDateFormat( "dd-MM-yy", Locale.US)
+                                .format(myCalendar.getTime()));
+                    }
+
+                }, myCalendar.get(Calendar.YEAR), myCalendar.get(Calendar.MONTH),
+                        myCalendar.get(Calendar.DAY_OF_MONTH)).show();
+            }
+        });
+
+        addTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                databaseReference = firebaseDatabase.getReference("Users")
+                        .child(uid).child("Events").child(eventList.get(position).getId());
+
+                HashMap<String, String> event = new HashMap<>();
+
+                event.put("id", eventList.get(position).getId());
+                event.put("eventTitle", titleET.getText().toString());
+                event.put("fromTo", startET.getText().toString()
+                        +" To "+destinationET.getText().toString());
+                event.put("startDate", String.valueOf(myCalendar.getTimeInMillis()));
+                event.put("budget", tourBudgetET.getText().toString());
+                event.put("balance", tourBudgetET.getText().toString());
+
+                databaseReference.setValue(event);
+
+                updateDialog.dismiss();
+
+
+            }
+
+
+        });
+
+
+        cancelTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                updateDialog.dismiss();
+            }
+        });
+
+        updateDialog.show();
+
+    }
+
+    @Override
+    public void onEventDeleteImageClicked(final int position) {
+
+        new AlertDialog.Builder(EventActivity.this)
+                .setTitle("Delete Tour")
+                .setMessage("Are you sure you want to delete?")
+
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+
+                        databaseReference.child(eventList.get(position).getId()).removeValue();
+
+
+                    }
+                })
+
+                .setNegativeButton(android.R.string.no, null)
+                .show();
+
+    }
+
+    @Override
+    public void onEventEditImageClicked(int position) {
+
+        updateEvent(position);
+    }
+
+    @Override
+    public void onEventViewClicked(int position) {
+
+        FragmentTransaction ft = fragmentManager.beginTransaction();
+
+        EventDetailFragment detailFragment = new EventDetailFragment();
+
+        ft.replace(R.id.fragmentContainer, detailFragment);
+
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("event", (Serializable) eventList.get(position));
+
+        detailFragment.setArguments(bundle);
+        ft.addToBackStack(null);
+        ft.commit();
+
+
+    }
+
+
+    @Override
+    public void onExpenseEditImageClicked(Expense expense) {
+
+    }
+
+    @Override
+    public void onExpenseDeleteImageClicked(Expense expense) {
+
+    }
+
+
+    public interface EventListChangedInterface{
+        void onEventListChanged(List<Event> events);
+    }
+
+
+
 }
