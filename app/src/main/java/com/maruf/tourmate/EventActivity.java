@@ -44,6 +44,7 @@ import com.maruf.tourmate.Adapters.EventsAdapter;
 import com.maruf.tourmate.Adapters.ExpenseAdapter;
 import com.maruf.tourmate.Fragments.EventDetailFragment;
 import com.maruf.tourmate.Fragments.EventListFragment;
+import com.maruf.tourmate.Fragments.NearByFragment;
 import com.maruf.tourmate.Models.Event;
 import com.maruf.tourmate.Models.Expense;
 
@@ -203,7 +204,6 @@ public class EventActivity extends AppCompatActivity implements
                     if (location != null) {
                         lat = location.getLatitude();
                         lon = location.getLongitude();
-                        Toast.makeText(EventActivity.this, "" + lon, Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -262,6 +262,8 @@ public class EventActivity extends AppCompatActivity implements
         int id = item.getItemId();
 
         if (id == R.id.nav_event) {
+            startActivity(getIntent());
+            finish();
 
 
         } else if (id == R.id.nav_weather) {
@@ -272,6 +274,19 @@ public class EventActivity extends AppCompatActivity implements
             startActivity(intent);
 
         } else if (id == R.id.nav_map) {
+
+            FragmentTransaction ft = fragmentManager.beginTransaction();
+
+            NearByFragment nearByFragment = new NearByFragment();
+
+            Bundle bundle = new Bundle();
+            bundle.putDouble("lat",lat);
+            bundle.putDouble("lon",lon);
+            nearByFragment.setArguments(bundle);
+            ft.replace(R.id.fragmentContainer, nearByFragment);
+            ft.addToBackStack(null);
+            ft.commit();
+
 
         }
 

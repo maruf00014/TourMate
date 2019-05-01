@@ -1,7 +1,5 @@
 package com.maruf.tourmate;
 
-import android.app.SearchManager;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -9,14 +7,12 @@ import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.SearchView;
-import android.widget.TableLayout;
 import android.widget.Toast;
 
 import com.maruf.tourmate.Fragments.CurrentWeatherFragment;
@@ -131,11 +127,11 @@ public class WeatherActivity extends AppCompatActivity {
 
 
         String currentByLanLon = String.format("data/2.5/weather?lat=%s&lon=%s&units=%s&appid=%s"
-                , lat, lon, units, getString(R.string.api_key));
+                , lat, lon, units, getString(R.string.weather_api_key));
 
 
         String forecastByLanLon = String.format("data/2.5/forecast?lat=%s&lon=%s&units=%s&appid=%s"
-                , lat, lon, units, getString(R.string.api_key));
+                , lat, lon, units, getString(R.string.weather_api_key));
 
 
         Retrofit weatherRetrofit = new Retrofit.Builder()
@@ -160,10 +156,10 @@ public class WeatherActivity extends AppCompatActivity {
 
 
         String currentByCity = String.format("data/2.5/weather?q=%s&units=%s&appid=%s"
-                , city, units, getString(R.string.api_key));
+                , city, units, getString(R.string.weather_api_key));
 
         String forcastByCity = String.format("data/2.5/forecast?q=%s&units=%s&appid=%s"
-                , city, units, getString(R.string.api_key));
+                , city, units, getString(R.string.weather_api_key));
 
 
         Retrofit weatherRetrofit = new Retrofit.Builder()
