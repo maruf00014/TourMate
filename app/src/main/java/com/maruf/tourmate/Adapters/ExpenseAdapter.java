@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.maruf.tourmate.Models.Event;
 import com.maruf.tourmate.Models.Expense;
 import com.maruf.tourmate.R;
 
@@ -23,14 +24,16 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
     private Context context;
 
     ExpenseAdapterInterface expenseAdapterInterface;
+    Event event;
 
 
 
 
 
-    public ExpenseAdapter(Context context, List<Expense> expenseList) {
+    public ExpenseAdapter(Context context, List<Expense> expenseList, Event event) {
         this.expenseList = expenseList;
         this.context = context;
+        this.event = event;
 
         expenseAdapterInterface = (ExpenseAdapterInterface) context;
 
@@ -53,7 +56,7 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
 
 
         holder.titleTV.setText(expenseList.get(i).getTitle());
-        holder.amountTV.setText(expenseList.get(i).getAmount()+" $");
+        holder.amountTV.setText("$"+expenseList.get(i).getAmount());
         holder.dateTV.setText(new SimpleDateFormat("dd-MM-yyyy")
                 .format(new Date(Long.valueOf(expenseList.get(i).getDate()))));
 
@@ -61,7 +64,7 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
         holder.deleteImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                expenseAdapterInterface.onExpenseDeleteImageClicked(expenseList.get(i));
+                expenseAdapterInterface.onExpenseDeleteImageClicked(expenseList.get(i),event);
             }
         });
 
@@ -69,7 +72,7 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
             @Override
             public void onClick(View v) {
 
-                expenseAdapterInterface.onExpenseEditImageClicked(expenseList.get(i));
+                expenseAdapterInterface.onExpenseEditImageClicked(expenseList.get(i),event);
             }
         });
 
@@ -104,8 +107,8 @@ public class ExpenseAdapter extends RecyclerView.Adapter<ExpenseAdapter.ExpenseV
 
     public interface ExpenseAdapterInterface{
 
-        void onExpenseEditImageClicked(Expense expense);
-        void onExpenseDeleteImageClicked(Expense expense);
+        void onExpenseEditImageClicked(Expense expense, Event event);
+        void onExpenseDeleteImageClicked(Expense expense, Event event);
     }
 
 

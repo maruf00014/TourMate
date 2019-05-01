@@ -4,6 +4,8 @@ package com.maruf.tourmate.Fragments;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -43,7 +45,7 @@ import java.util.Locale;
 public class EventDetailFragment extends Fragment {
 
 
-    TextView eventDetailTitleTV,detailBudgetStatusTV;
+    TextView eventDetailTitleTV, detailBudgetStatusTV;
     ProgressBar detailProgressbar;
     RecyclerView expenseListRV;
     FloatingActionButton addExpenseFab;
@@ -55,7 +57,7 @@ public class EventDetailFragment extends Fragment {
     DatabaseReference databaseReference;
     String uid = "";
     List<Expense> expensesList = new ArrayList<>();
-
+    Double totalExpense;
     Event currentEvent;
     Context context;
 
@@ -118,10 +120,30 @@ public class EventDetailFragment extends Fragment {
                 }
 
 
-                expenseAdapter = new ExpenseAdapter(getActivity(),expensesList);
+                totalExpense = 0.0;
+
+                for (int i = 0; i < expensesList.size(); i++) {
+
+                    totalExpense += Double.valueOf(expensesList.get(i).getAmount());
+                }
+
+                detailProgressbar.setMax(Integer.parseInt(currentEvent.getBudget()));
+                detailProgressbar.setProgress((int) Math.round(totalExpense));
+
+                detailProgressbar.setProgressTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorPrimary)));
+/*
+                int progressLimt =  Integer.parseInt(currentEvent.getBudget())* (80/100);
+
+                if (detailProgressbar.getProgress() < progressLimt ){
+
+                } else detailProgressbar.setProgressTintList(ColorStateList.valueOf(Color.RED));
+*/
+
+                detailBudgetStatusTV.setText("Budget Status(" + Math.round(totalExpense) + "/"
+                        + currentEvent.getBudget() + ")");
+                expenseAdapter = new ExpenseAdapter(getActivity(), expensesList, currentEvent);
                 expenseListRV.setLayoutManager(new LinearLayoutManager(getActivity()));
                 expenseListRV.setAdapter(expenseAdapter);
-
 
 
             }
@@ -131,7 +153,6 @@ public class EventDetailFragment extends Fragment {
 
             }
         });
-
 
 
         addExpenseFab.setOnClickListener(new View.OnClickListener() {
@@ -157,7 +178,6 @@ public class EventDetailFragment extends Fragment {
                     public void onClick(View v) {
 
 
-
                         new DatePickerDialog(getActivity(), new DatePickerDialog.OnDateSetListener() {
 
                             @Override
@@ -168,7 +188,7 @@ public class EventDetailFragment extends Fragment {
                                 myCalendar.set(Calendar.MONTH, monthOfYear);
                                 myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
 
-                                expDateET.setText( new SimpleDateFormat( "dd-MM-yy", Locale.US)
+                                expDateET.setText(new SimpleDateFormat("dd-MM-yy", Locale.US)
                                         .format(myCalendar.getTime()));
                             }
 
@@ -216,7 +236,6 @@ public class EventDetailFragment extends Fragment {
 
             }
         });
-
 
 
     }

@@ -54,7 +54,7 @@ public class EventsAdapter extends RecyclerView.Adapter<EventsAdapter.EventViewH
 
         holder.titleTV.setText(eventList.get(i).getEventTitle());
         holder.fromToTV.setText(eventList.get(i).getFromTo());
-        holder.budgetTV.setText(eventList.get(i).getBudget()+" $");
+        holder.budgetTV.setText("$"+eventList.get(i).getBudget());
 
 
         holder.startDateTV.setText(new SimpleDateFormat("dd-MM-yyyy")

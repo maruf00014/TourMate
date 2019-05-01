@@ -3,6 +3,7 @@ package com.maruf.tourmate;
 import android.Manifest;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -62,7 +63,7 @@ public class EventActivity extends AppCompatActivity implements
         EventsAdapter.EventAdapterInterface,
         ExpenseAdapter.ExpenseAdapterInterface {
 
-
+    ProgressDialog progressDialog;
     private double lat = 0.0;
     private double lon = 0.0;
     private boolean isLocationPermissionGranted = false;
@@ -73,10 +74,15 @@ public class EventActivity extends AppCompatActivity implements
     FirebaseDatabase firebaseDatabase;
     DatabaseReference databaseReference;
     String uid = "";
+    String userName ="";
+    String userEmail ="";
+
     List<Event> eventList = new ArrayList<>();
 
     FragmentManager fragmentManager;
     Context context;
+
+    TextView navNameTV,navEmailTV;
 
     EventListChangedInterface eventListChangedInterface;
 
@@ -89,15 +95,20 @@ public class EventActivity extends AppCompatActivity implements
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-
+        progressDialog = ProgressDialog.show(EventActivity.this, "", "Loading...", true);
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
         toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        final NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        View headerView = navigationView.getHeaderView(0);
+        navNameTV =  headerView.findViewById(R.id.navNameTV);
+        navEmailTV = headerView.findViewById(R.id.navEmailTV);
+
 
         locationProviderClient = LocationServices.getFusedLocationProviderClient(this);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -128,23 +139,29 @@ public class EventActivity extends AppCompatActivity implements
         firebaseDatabase = FirebaseDatabase.getInstance();
 
 
-        databaseReference = firebaseDatabase.getReference().child("Users").child(uid)
-                .child("Events");
+        databaseReference = firebaseDatabase.getReference().child("Users").child(uid);
 
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                 eventList.clear();
+                userEmail = dataSnapshot.child("email").getValue(String.class);
+                userName = dataSnapshot.child("name").getValue(String.class);
 
-                for (DataSnapshot eSnapshot : dataSnapshot.getChildren()) {
+                navNameTV.setText(userName);
+                navEmailTV.setText(userEmail);
+
+
+                for (DataSnapshot eSnapshot : dataSnapshot.child("Events").getChildren()) {
+
 
                     eventList.add(eSnapshot.getValue(Event.class));
 
 
                 }
                 eventListChangedInterface.onEventListChanged(eventList);
-
+                progressDialog.dismiss();
 
 
             }
@@ -248,8 +265,18 @@ public class EventActivity extends AppCompatActivity implements
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        if (id == R.id.log_out) {
+
+            getSharedPreferences("PREFERENCE", MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("logedin", false)
+                    .putString("email", "")
+                    .putString("pass", "")
+                    .apply();
+
+            Intent intent = new Intent(EventActivity.this,
+                    RegisterLogInActivity.class);
+            startActivity(intent);
         }
 
         return super.onOptionsItemSelected(item);
@@ -395,7 +422,7 @@ public class EventActivity extends AppCompatActivity implements
     public void onEventDeleteImageClicked(final int position) {
 
         new AlertDialog.Builder(EventActivity.this)
-                .setTitle("Delete Tour")
+                .setTitle("Delete")
                 .setMessage("Are you sure you want to delete?")
 
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
@@ -439,12 +466,113 @@ public class EventActivity extends AppCompatActivity implements
 
 
     @Override
-    public void onExpenseEditImageClicked(Expense expense) {
+    public void onExpenseEditImageClicked(final Expense expense, final Event event) {
 
+        final Dialog updateDialog = new Dialog(EventActivity.this);
+        updateDialog.setTitle("Update Expense");
+        updateDialog.setContentView(R.layout.add_expense_layout);
+
+        final TextInputEditText expTitleET = updateDialog.findViewById(R.id.expTitleET);
+        final TextInputEditText expAmountET = updateDialog.findViewById(R.id.expAmountET);
+        final TextInputEditText expDateET = updateDialog.findViewById(R.id.expDateET);
+
+        expTitleET.setText(expense.getTitle());
+        expDateET.setText(new SimpleDateFormat("dd-MM-yyyy")
+                .format(new Date(Long.valueOf(expense.getDate()))));
+        expAmountET.setText(expense.getAmount());
+
+
+        final TextView addTV = updateDialog.findViewById(R.id.addTV);
+        addTV.setText("Update");
+        TextView cancelTV = updateDialog.findViewById(R.id.cancelTV);
+
+        final Calendar myCalendar = Calendar.getInstance();
+
+        expDateET.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+
+
+                new DatePickerDialog(context, new DatePickerDialog.OnDateSetListener() {
+
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int monthOfYear,
+                                          int dayOfMonth) {
+
+                        myCalendar.set(Calendar.YEAR, year);
+                        myCalendar.set(Calendar.MONTH, monthOfYear);
+                        myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                        expDateET.setText( new SimpleDateFormat( "dd-MM-yy", Locale.US)
+                                .format(myCalendar.getTime()));
+                    }
+
+                }, myCalendar.get(Calendar.YEAR), myCalendar.get(Calendar.MONTH),
+                        myCalendar.get(Calendar.DAY_OF_MONTH)).show();
+            }
+        });
+
+        addTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                databaseReference = firebaseDatabase.getReference()
+                        .child("Users").child(uid)
+                        .child("Events").child(event.getId())
+                        .child("Expenses").child(expense.getId());
+
+                HashMap<String, String> event = new HashMap<>();
+
+                event.put("id", expense.getId());
+                event.put("title", expTitleET.getText().toString());
+                event.put("date", String.valueOf(myCalendar.getTimeInMillis()));
+                event.put("amount", expAmountET.getText().toString());
+
+                databaseReference.setValue(event);
+
+
+                updateDialog.dismiss();
+
+
+            }
+
+
+        });
+
+
+        cancelTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                updateDialog.dismiss();
+            }
+        });
+
+        updateDialog.show();
     }
 
     @Override
-    public void onExpenseDeleteImageClicked(Expense expense) {
+    public void onExpenseDeleteImageClicked(final Expense expense, final Event event) {
+
+        new AlertDialog.Builder(EventActivity.this)
+                .setTitle("Delete")
+                .setMessage("Are you sure you want to delete?")
+
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+
+                        firebaseDatabase.getReference()
+                                .child("Users").child(uid)
+                                .child("Events").child(event.getId())
+                                .child("Expenses").child(expense.getId()).removeValue();
+
+                    }
+                })
+
+                .setNegativeButton(android.R.string.no, null)
+                .show();
+
 
     }
 
