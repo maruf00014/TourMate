@@ -12,7 +12,6 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.TextInputEditText;
 import android.support.v4.app.ActivityCompat;
@@ -23,14 +22,12 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.DatePicker;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -43,7 +40,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.maruf.tourmate.Adapters.EventsAdapter;
 import com.maruf.tourmate.Adapters.ExpenseAdapter;
-import com.maruf.tourmate.Fragments.EventDetailFragment;
 import com.maruf.tourmate.Fragments.EventListFragment;
 import com.maruf.tourmate.Fragments.NearByFragment;
 import com.maruf.tourmate.Models.Event;
@@ -60,8 +56,8 @@ import java.util.Locale;
 
 public class EventActivity extends AppCompatActivity implements
         NavigationView.OnNavigationItemSelectedListener,
-        EventsAdapter.EventAdapterInterface,
-        ExpenseAdapter.ExpenseAdapterInterface {
+        EventsAdapter.EventAdapterInterface
+         {
 
     ProgressDialog progressDialog;
     private double lat = 0.0;
@@ -80,7 +76,6 @@ public class EventActivity extends AppCompatActivity implements
     List<Event> eventList = new ArrayList<>();
 
     FragmentManager fragmentManager;
-    Context context;
 
     TextView navNameTV,navEmailTV;
 
@@ -360,7 +355,7 @@ public class EventActivity extends AppCompatActivity implements
 
 
 
-                new DatePickerDialog(context, new DatePickerDialog.OnDateSetListener() {
+                new DatePickerDialog(EventActivity.this, new DatePickerDialog.OnDateSetListener() {
 
                     @Override
                     public void onDateSet(DatePicker view, int year, int monthOfYear,
@@ -428,7 +423,7 @@ public class EventActivity extends AppCompatActivity implements
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
 
-                        databaseReference.child(eventList.get(position).getId()).removeValue();
+                        firebaseDatabase.getReference().child("Users").child(uid).child("Events").child(eventList.get(position).getId()).removeValue();
 
 
                     }
@@ -448,133 +443,16 @@ public class EventActivity extends AppCompatActivity implements
     @Override
     public void onEventViewClicked(int position) {
 
-        FragmentTransaction ft = fragmentManager.beginTransaction();
 
-        EventDetailFragment detailFragment = new EventDetailFragment();
+        Intent intent = new Intent(EventActivity.this,EventDetailActivity.class);
 
-        ft.replace(R.id.fragmentContainer, detailFragment);
-
-        Bundle bundle = new Bundle();
-        bundle.putSerializable("event", (Serializable) eventList.get(position));
-
-        detailFragment.setArguments(bundle);
-        ft.addToBackStack(null);
-        ft.commit();
+        intent.putExtra("event",(Serializable) eventList.get(position));
+        startActivity(intent);
 
 
     }
 
 
-    @Override
-    public void onExpenseEditImageClicked(final Expense expense, final Event event) {
-
-        final Dialog updateDialog = new Dialog(EventActivity.this);
-        updateDialog.setTitle("Update Expense");
-        updateDialog.setContentView(R.layout.add_expense_layout);
-
-        final TextInputEditText expTitleET = updateDialog.findViewById(R.id.expTitleET);
-        final TextInputEditText expAmountET = updateDialog.findViewById(R.id.expAmountET);
-        final TextInputEditText expDateET = updateDialog.findViewById(R.id.expDateET);
-
-        expTitleET.setText(expense.getTitle());
-        expDateET.setText(new SimpleDateFormat("dd-MM-yyyy")
-                .format(new Date(Long.valueOf(expense.getDate()))));
-        expAmountET.setText(expense.getAmount());
-
-
-        final TextView addTV = updateDialog.findViewById(R.id.addTV);
-        addTV.setText("Update");
-        TextView cancelTV = updateDialog.findViewById(R.id.cancelTV);
-
-        final Calendar myCalendar = Calendar.getInstance();
-
-        expDateET.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-
-
-
-                new DatePickerDialog(context, new DatePickerDialog.OnDateSetListener() {
-
-                    @Override
-                    public void onDateSet(DatePicker view, int year, int monthOfYear,
-                                          int dayOfMonth) {
-
-                        myCalendar.set(Calendar.YEAR, year);
-                        myCalendar.set(Calendar.MONTH, monthOfYear);
-                        myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
-
-                        expDateET.setText( new SimpleDateFormat( "dd-MM-yy", Locale.US)
-                                .format(myCalendar.getTime()));
-                    }
-
-                }, myCalendar.get(Calendar.YEAR), myCalendar.get(Calendar.MONTH),
-                        myCalendar.get(Calendar.DAY_OF_MONTH)).show();
-            }
-        });
-
-        addTV.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                databaseReference = firebaseDatabase.getReference()
-                        .child("Users").child(uid)
-                        .child("Events").child(event.getId())
-                        .child("Expenses").child(expense.getId());
-
-                HashMap<String, String> event = new HashMap<>();
-
-                event.put("id", expense.getId());
-                event.put("title", expTitleET.getText().toString());
-                event.put("date", String.valueOf(myCalendar.getTimeInMillis()));
-                event.put("amount", expAmountET.getText().toString());
-
-                databaseReference.setValue(event);
-
-
-                updateDialog.dismiss();
-
-
-            }
-
-
-        });
-
-
-        cancelTV.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                updateDialog.dismiss();
-            }
-        });
-
-        updateDialog.show();
-    }
-
-    @Override
-    public void onExpenseDeleteImageClicked(final Expense expense, final Event event) {
-
-        new AlertDialog.Builder(EventActivity.this)
-                .setTitle("Delete")
-                .setMessage("Are you sure you want to delete?")
-
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-
-                        firebaseDatabase.getReference()
-                                .child("Users").child(uid)
-                                .child("Events").child(event.getId())
-                                .child("Expenses").child(expense.getId()).removeValue();
-
-                    }
-                })
-
-                .setNegativeButton(android.R.string.no, null)
-                .show();
-
-
-    }
 
 
     public interface EventListChangedInterface{
