@@ -37,6 +37,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SearchView;
 import android.widget.TextView;
@@ -75,7 +76,8 @@ public class EventDetailActivity extends AppCompatActivity implements
     ProgressBar detailProgressbar;
     RecyclerView expenseListRV;
     FloatingActionButton addExpenseFab;
-
+    Button addExpBtn;
+    LinearLayout emptyListL;
     ExpenseAdapter expenseAdapter;
 
     FirebaseAuth firebaseAuth;
@@ -87,6 +89,8 @@ public class EventDetailActivity extends AppCompatActivity implements
     Event currentEvent;
 
     Toolbar toolbar;
+
+    CheckConnectivity checkConnectivity = new CheckConnectivity();
 
 
     private static final int CAMERA_REQUEST = 1888;
@@ -110,153 +114,95 @@ public class EventDetailActivity extends AppCompatActivity implements
         detailProgressbar = findViewById(R.id.detailProgressbar);
         expenseListRV = findViewById(R.id.detailRV);
         addExpenseFab = findViewById(R.id.detailFab);
+        addExpBtn = findViewById(R.id.addExpBtn);
+        emptyListL = findViewById(R.id.emptyListL);
 
 
-        firebaseAuth = FirebaseAuth.getInstance();
+        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                && checkConnectivity.internetIsConnected() ) {
 
-        if (firebaseAuth.getUid() != null) {
-            uid = firebaseAuth.getUid();
+            firebaseAuth = FirebaseAuth.getInstance();
+
+            if (firebaseAuth.getUid() != null) {
+                uid = firebaseAuth.getUid();
+            }
+            firebaseDatabase = FirebaseDatabase.getInstance();
+
+
+            currentEvent = (Event) getIntent().getSerializableExtra("event");
+
+            eventDetailTitleTV.setText(currentEvent.getEventTitle());
+
+            databaseReference = firebaseDatabase.getReference().child("Users").child(uid)
+                    .child("Events").child(currentEvent.getId()).child("Expenses");
+
+            databaseReference.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                    expensesList.clear();
+
+                    for (DataSnapshot eSnapshot : dataSnapshot.getChildren()) {
+
+                        expensesList.add(eSnapshot.getValue(Expense.class));
+
+
+                    }
+
+                    if(expensesList.size() > 0) emptyListL.setVisibility(View.INVISIBLE);
+                    else emptyListL.setVisibility(View.VISIBLE);
+
+                    totalExpense = 0.0;
+
+                    for (int i = 0; i < expensesList.size(); i++) {
+
+                        totalExpense += Double.valueOf(expensesList.get(i).getAmount());
+                    }
+
+                    detailProgressbar.setMax(Integer.parseInt(currentEvent.getBudget()));
+                    detailProgressbar.setProgress((int) Math.round(totalExpense));
+
+                    detailBudgetStatusTV.setText("Budget Status(" + Math.round(totalExpense) + "/"
+                            + currentEvent.getBudget() + ")");
+                    expenseAdapter = new ExpenseAdapter(EventDetailActivity.this, expensesList, currentEvent);
+                    expenseListRV.setLayoutManager(new LinearLayoutManager(EventDetailActivity.this));
+                    expenseListRV.setAdapter(expenseAdapter);
+
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+
+
         }
-        firebaseDatabase = FirebaseDatabase.getInstance();
+
+        else Toast.makeText(EventDetailActivity.this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
 
 
-        currentEvent = (Event) getIntent().getSerializableExtra("event");
-
-        eventDetailTitleTV.setText(currentEvent.getEventTitle());
-
-        databaseReference = firebaseDatabase.getReference().child("Users").child(uid)
-                .child("Events").child(currentEvent.getId()).child("Expenses");
-
-        databaseReference.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
-                expensesList.clear();
-
-                for (DataSnapshot eSnapshot : dataSnapshot.getChildren()) {
-
-                    expensesList.add(eSnapshot.getValue(Expense.class));
 
 
-                }
 
-                totalExpense = 0.0;
-
-                for (int i = 0; i < expensesList.size(); i++) {
-
-                    totalExpense += Double.valueOf(expensesList.get(i).getAmount());
-                }
-
-                detailProgressbar.setMax(Integer.parseInt(currentEvent.getBudget()));
-                detailProgressbar.setProgress((int) Math.round(totalExpense));
-
-                detailProgressbar.setProgressTintList(ColorStateList.valueOf(getResources().getColor(R.color.colorPrimary)));
-/*
-                int progressLimt =  Integer.parseInt(currentEvent.getBudget())* (80/100);
-
-                if (detailProgressbar.getProgress() < progressLimt ){
-
-                } else detailProgressbar.setProgressTintList(ColorStateList.valueOf(Color.RED));
-*/
-
-                detailBudgetStatusTV.setText("Budget Status(" + Math.round(totalExpense) + "/"
-                        + currentEvent.getBudget() + ")");
-                expenseAdapter = new ExpenseAdapter(EventDetailActivity.this, expensesList, currentEvent);
-                expenseListRV.setLayoutManager(new LinearLayoutManager(EventDetailActivity.this));
-                expenseListRV.setAdapter(expenseAdapter);
-
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-
-            }
-        });
 
 
         addExpenseFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final Dialog addDialog = new Dialog(EventDetailActivity.this);
-                addDialog.setTitle("Add Expense");
-                addDialog.setContentView(R.layout.add_expense_layout);
-
-                final TextInputEditText expTitleET = addDialog.findViewById(R.id.expTitleET);
-                final TextInputEditText expDateET = addDialog.findViewById(R.id.expDateET);
-                final TextInputEditText expAmountET = addDialog.findViewById(R.id.expAmountET);
-
-                TextView addTV = addDialog.findViewById(R.id.addTV);
-                addTV.setText("Add");
-                TextView cancelTV = addDialog.findViewById(R.id.cancelTV);
-
-                final Calendar myCalendar = Calendar.getInstance();
-
-                expDateET.setOnClickListener(new View.OnClickListener() {
-
-                    @Override
-                    public void onClick(View v) {
-
-
-                        new DatePickerDialog(EventDetailActivity.this, new DatePickerDialog.OnDateSetListener() {
-
-                            @Override
-                            public void onDateSet(DatePicker view, int year, int monthOfYear,
-                                                  int dayOfMonth) {
-
-                                myCalendar.set(Calendar.YEAR, year);
-                                myCalendar.set(Calendar.MONTH, monthOfYear);
-                                myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
-
-                                expDateET.setText(new SimpleDateFormat("dd-MM-yy", Locale.US)
-                                        .format(myCalendar.getTime()));
-                            }
-
-                        }, myCalendar.get(Calendar.YEAR), myCalendar.get(Calendar.MONTH),
-                                myCalendar.get(Calendar.DAY_OF_MONTH)).show();
-                    }
-                });
-
-                addTV.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-
-                        databaseReference = firebaseDatabase.getReference()
-                                .child("Users").child(uid)
-                                .child("Events").child(currentEvent.getId())
-                                .child("Expenses").push();
-
-                        HashMap<String, String> event = new HashMap<>();
-
-                        event.put("id", databaseReference.getKey());
-                        event.put("title", expTitleET.getText().toString());
-                        event.put("date", String.valueOf(myCalendar.getTimeInMillis()));
-                        event.put("amount", expAmountET.getText().toString());
-
-
-                        databaseReference.setValue(event);
-
-                        addDialog.dismiss();
-
-
-                    }
-
-
-                });
-
-
-                cancelTV.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        addDialog.dismiss();
-                    }
-                });
-
-                addDialog.show();
+                addExpense();
 
             }
         });
 
+        addExpBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addExpense();
+
+            }
+        });
 
     }
 
@@ -459,22 +405,39 @@ public class EventDetailActivity extends AppCompatActivity implements
             @Override
             public void onClick(View view) {
 
-                databaseReference = firebaseDatabase.getReference()
-                        .child("Users").child(uid)
-                        .child("Events").child(event.getId())
-                        .child("Expenses").child(expense.getId());
-
-                HashMap<String, String> event = new HashMap<>();
-
-                event.put("id", expense.getId());
-                event.put("title", expTitleET.getText().toString());
-                event.put("date", String.valueOf(myCalendar.getTimeInMillis()));
-                event.put("amount", expAmountET.getText().toString());
-
-                databaseReference.setValue(event);
+                if (expTitleET.getText().toString().trim().equals("")
+                        || expDateET.getText().toString().trim().equals("")
+                        || expAmountET.getText().toString().trim().equals("")) {
+                    Toast.makeText(EventDetailActivity.this, "All field are required!",
+                            Toast.LENGTH_SHORT).show();
+                } else {
 
 
-                updateDialog.dismiss();
+                    if (checkConnectivity.isNetworkConnected(getApplicationContext())
+                            && checkConnectivity.internetIsConnected()) {
+
+                        databaseReference = firebaseDatabase.getReference()
+                                .child("Users").child(uid)
+                                .child("Events").child(event.getId())
+                                .child("Expenses").child(expense.getId());
+
+                        HashMap<String, String> event = new HashMap<>();
+
+                        event.put("id", expense.getId());
+                        event.put("title", expTitleET.getText().toString());
+                        event.put("date", String.valueOf(myCalendar.getTimeInMillis()));
+                        event.put("amount", expAmountET.getText().toString());
+                        databaseReference.setValue(event);
+                        updateDialog.dismiss();
+
+                    }
+
+
+                else
+                    Toast.makeText(EventDetailActivity.this, "Internet connection problem!", Toast.LENGTH_SHORT).show();
+
+                }
+
 
 
             }
@@ -503,10 +466,18 @@ public class EventDetailActivity extends AppCompatActivity implements
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
 
-                        firebaseDatabase.getReference()
-                                .child("Users").child(uid)
-                                .child("Events").child(event.getId())
-                                .child("Expenses").child(expense.getId()).removeValue();
+
+
+                        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                                && checkConnectivity.internetIsConnected() ) {
+                            firebaseDatabase.getReference()
+                                    .child("Users").child(uid)
+                                    .child("Events").child(event.getId())
+                                    .child("Expenses").child(expense.getId()).removeValue();                        }
+
+                        else Toast.makeText(EventDetailActivity.this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
+
 
                     }
                 })
@@ -515,6 +486,100 @@ public class EventDetailActivity extends AppCompatActivity implements
                 .show();
 
 
+    }
+
+    public void addExpense(){
+
+        final Dialog addDialog = new Dialog(EventDetailActivity.this);
+        addDialog.setTitle("Add Expense");
+        addDialog.setContentView(R.layout.add_expense_layout);
+
+        final TextInputEditText expTitleET = addDialog.findViewById(R.id.expTitleET);
+        final TextInputEditText expDateET = addDialog.findViewById(R.id.expDateET);
+        final TextInputEditText expAmountET = addDialog.findViewById(R.id.expAmountET);
+
+        TextView addTV = addDialog.findViewById(R.id.addTV);
+        addTV.setText("Add");
+        TextView cancelTV = addDialog.findViewById(R.id.cancelTV);
+
+        final Calendar myCalendar = Calendar.getInstance();
+
+        expDateET.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+
+                new DatePickerDialog(EventDetailActivity.this, new DatePickerDialog.OnDateSetListener() {
+
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int monthOfYear,
+                                          int dayOfMonth) {
+
+                        myCalendar.set(Calendar.YEAR, year);
+                        myCalendar.set(Calendar.MONTH, monthOfYear);
+                        myCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                        expDateET.setText(new SimpleDateFormat("dd-MM-yy", Locale.US)
+                                .format(myCalendar.getTime()));
+                    }
+
+                }, myCalendar.get(Calendar.YEAR), myCalendar.get(Calendar.MONTH),
+                        myCalendar.get(Calendar.DAY_OF_MONTH)).show();
+            }
+        });
+
+        addTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(expTitleET.getText().toString().trim().equals("")
+                        || expDateET.getText().toString().trim().equals("")
+                        || expAmountET.getText().toString().trim().equals(""))
+
+                {
+                    Toast.makeText(EventDetailActivity.this,"All field are required!",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+
+                    if (checkConnectivity.isNetworkConnected(getApplicationContext())
+                            && checkConnectivity.internetIsConnected()) {
+
+                        databaseReference = firebaseDatabase.getReference()
+                                .child("Users").child(uid)
+                                .child("Events").child(currentEvent.getId())
+                                .child("Expenses").push();
+
+                        HashMap<String, String> event = new HashMap<>();
+
+                        event.put("id", databaseReference.getKey());
+                        event.put("title", expTitleET.getText().toString());
+                        event.put("date", String.valueOf(myCalendar.getTimeInMillis()));
+                        event.put("amount", expAmountET.getText().toString());
+                        databaseReference.setValue(event);
+                        addDialog.dismiss();
+
+                    } else
+                        Toast.makeText(EventDetailActivity.this, "Internet connection problem!", Toast.LENGTH_SHORT).show();
+
+
+                }
+
+
+
+            }
+
+
+        });
+
+
+        cancelTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addDialog.dismiss();
+            }
+        });
+
+        addDialog.show();
     }
 
 

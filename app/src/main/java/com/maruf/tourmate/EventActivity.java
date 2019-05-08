@@ -28,6 +28,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.DatePicker;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -56,8 +57,7 @@ import java.util.Locale;
 
 public class EventActivity extends AppCompatActivity implements
         NavigationView.OnNavigationItemSelectedListener,
-        EventsAdapter.EventAdapterInterface
-         {
+        EventsAdapter.EventAdapterInterface {
 
     ProgressDialog progressDialog;
     private double lat = 0.0;
@@ -72,6 +72,8 @@ public class EventActivity extends AppCompatActivity implements
     String uid = "";
     String userName ="";
     String userEmail ="";
+
+    CheckConnectivity checkConnectivity = new CheckConnectivity();
 
     List<Event> eventList = new ArrayList<>();
 
@@ -90,7 +92,6 @@ public class EventActivity extends AppCompatActivity implements
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        progressDialog = ProgressDialog.show(EventActivity.this, "", "Loading...", true);
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -123,49 +124,58 @@ public class EventActivity extends AppCompatActivity implements
         ft.add(R.id.fragmentContainer, eventListFragment);
         ft.commit();
 
+        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                && checkConnectivity.internetIsConnected()){
+            firebaseAuth = FirebaseAuth.getInstance();
+
+            progressDialog = ProgressDialog.show(EventActivity.this, "", "Loading...", true);
+
+            if (firebaseAuth.getUid() != null) {
+                uid = firebaseAuth.getUid();
+            }
+            firebaseDatabase = FirebaseDatabase.getInstance();
 
 
+            databaseReference = firebaseDatabase.getReference().child("Users").child(uid);
 
-        firebaseAuth = FirebaseAuth.getInstance();
+            databaseReference.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-        if (firebaseAuth.getUid() != null) {
-            uid = firebaseAuth.getUid();
-        }
-        firebaseDatabase = FirebaseDatabase.getInstance();
+                    eventList.clear();
+                    userEmail = dataSnapshot.child("email").getValue(String.class);
+                    userName = dataSnapshot.child("name").getValue(String.class);
 
-
-        databaseReference = firebaseDatabase.getReference().child("Users").child(uid);
-
-        databaseReference.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
-                eventList.clear();
-                userEmail = dataSnapshot.child("email").getValue(String.class);
-                userName = dataSnapshot.child("name").getValue(String.class);
-
-                navNameTV.setText(userName);
-                navEmailTV.setText(userEmail);
+                    navNameTV.setText(userName);
+                    navEmailTV.setText(userEmail);
 
 
-                for (DataSnapshot eSnapshot : dataSnapshot.child("Events").getChildren()) {
+                    for (DataSnapshot eSnapshot : dataSnapshot.child("Events").getChildren()) {
 
 
-                    eventList.add(eSnapshot.getValue(Event.class));
+                        eventList.add(eSnapshot.getValue(Event.class));
+
+
+                    }
+                    eventListChangedInterface.onEventListChanged(eventList);
+                    progressDialog.dismiss();
 
 
                 }
-                eventListChangedInterface.onEventListChanged(eventList);
-                progressDialog.dismiss();
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
 
 
-            }
+        }
+        else Toast.makeText(this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
 
-            }
-        });
+
+
 
 
 
@@ -377,24 +387,40 @@ public class EventActivity extends AppCompatActivity implements
         addTV.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(titleET.getText().toString().trim().equals("")
+                        || startET.getText().toString().trim().equals("")
+                        || destinationET.getText().toString().trim().equals("")
+                        || tourDateET.getText().toString().trim().equals("")
+                        || tourBudgetET.getText().toString().trim().equals(""))
 
-                databaseReference = firebaseDatabase.getReference("Users")
-                        .child(uid).child("Events").child(eventList.get(position).getId());
+                {
+                    Toast.makeText(EventActivity.this,"All field are required!",
+                            Toast.LENGTH_SHORT).show();
+                } else {
 
-                HashMap<String, String> event = new HashMap<>();
 
-                event.put("id", eventList.get(position).getId());
-                event.put("eventTitle", titleET.getText().toString());
-                event.put("fromTo", startET.getText().toString()
-                        +" To "+destinationET.getText().toString());
-                event.put("startDate", String.valueOf(myCalendar.getTimeInMillis()));
-                event.put("budget", tourBudgetET.getText().toString());
-                event.put("balance", tourBudgetET.getText().toString());
+                    if (checkConnectivity.isNetworkConnected(getApplicationContext())
+                            && checkConnectivity.internetIsConnected()) {
 
-                databaseReference.setValue(event);
+                        databaseReference = firebaseDatabase.getReference("Users")
+                                .child(uid).child("Events").child(eventList.get(position).getId());
 
-                updateDialog.dismiss();
+                        HashMap<String, String> event = new HashMap<>();
 
+                        event.put("id", eventList.get(position).getId());
+                        event.put("eventTitle", titleET.getText().toString());
+                        event.put("fromTo", startET.getText().toString()
+                                + " To " + destinationET.getText().toString());
+                        event.put("startDate", String.valueOf(myCalendar.getTimeInMillis()));
+                        event.put("budget", tourBudgetET.getText().toString());
+                        event.put("balance", tourBudgetET.getText().toString());
+                        databaseReference.setValue(event);
+                        updateDialog.dismiss();
+                    } else
+                        Toast.makeText(EventActivity.this, "Internet connection problem!", Toast.LENGTH_SHORT).show();
+
+
+                }
 
             }
 
@@ -423,7 +449,13 @@ public class EventActivity extends AppCompatActivity implements
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
 
-                        firebaseDatabase.getReference().child("Users").child(uid).child("Events").child(eventList.get(position).getId()).removeValue();
+                        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                                && checkConnectivity.internetIsConnected() ) {
+                            firebaseDatabase.getReference().child("Users").child(uid).child("Events").child(eventList.get(position).getId()).removeValue();
+                        }
+
+                        else Toast.makeText(EventActivity.this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
 
 
                     }

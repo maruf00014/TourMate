@@ -1,8 +1,9 @@
 package com.maruf.tourmate;
 
 import android.app.ProgressDialog;
+
 import android.content.Intent;
-import android.net.Uri;
+
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentManager;
@@ -33,10 +34,14 @@ public class RegisterLogInActivity extends AppCompatActivity implements LoginFra
 
     FirebaseAuth firebaseAuth;
 
+    CheckConnectivity checkConnectivity = new CheckConnectivity();
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register_log_in);
+
 
         firebaseAuth = FirebaseAuth.getInstance();
 
@@ -56,6 +61,16 @@ public class RegisterLogInActivity extends AppCompatActivity implements LoginFra
 
             ft.remove(loginFragment);
 
+            if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                    && checkConnectivity.internetIsConnected()) {
+
+                login(getSharedPreferences("PREFERENCE",
+                        MODE_PRIVATE).getString("email", ""),
+                        getSharedPreferences("PREFERENCE",
+                                MODE_PRIVATE).getString("pass", ""));
+            }
+            else Toast.makeText(this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
             login(getSharedPreferences("PREFERENCE",
                     MODE_PRIVATE).getString("email", ""),
                     getSharedPreferences("PREFERENCE",
@@ -73,7 +88,11 @@ public class RegisterLogInActivity extends AppCompatActivity implements LoginFra
     @Override
     public void onLoginButtonClicked(final String email, final String pass) {
 
-            login(email,pass);
+        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                && checkConnectivity.internetIsConnected()) login(email,pass);
+        else Toast.makeText(this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
+
 
     }
 
@@ -90,26 +109,40 @@ public class RegisterLogInActivity extends AppCompatActivity implements LoginFra
 
     @Override
     public void onSignUPButtonClicked(final String name, final String email, final String pass) {
-        progressDialog = ProgressDialog.show(
-                RegisterLogInActivity.this, "Please wait...", "Proccessing...", true);
 
 
-        firebaseAuth.createUserWithEmailAndPassword(email, pass)
-                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
+
+        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                && checkConnectivity.internetIsConnected()) {
 
 
-                        if (task.isSuccessful()) {
-                            storeData(name, email, pass);
+            progressDialog = ProgressDialog.show(
+                    RegisterLogInActivity.this, "Please wait...", "Proccessing...", true);
 
-                        } else {
-                            Log.e("ERROR", task.getException().toString());
-                            if(progressDialog!=null) progressDialog.dismiss();
-                            Toast.makeText(RegisterLogInActivity.this, task.getException().getMessage(), Toast.LENGTH_LONG).show();
+
+            firebaseAuth.createUserWithEmailAndPassword(email, pass)
+                    .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+
+
+                            if (task.isSuccessful()) {
+                                storeData(name, email, pass);
+
+                            } else {
+                                Log.e("ERROR", task.getException().toString());
+                                if(progressDialog!=null) progressDialog.dismiss();
+                                Toast.makeText(RegisterLogInActivity.this, task.getException().getMessage(), Toast.LENGTH_LONG).show();
+                            }
                         }
-                    }
-                });
+                    });
+
+
+
+        }
+        else Toast.makeText(this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
+
 
     }
 
@@ -198,6 +231,8 @@ public class RegisterLogInActivity extends AppCompatActivity implements LoginFra
                     }
                 });
     }
+
+
 
 
 }

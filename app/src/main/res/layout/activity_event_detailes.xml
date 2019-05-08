@@ -44,6 +44,7 @@
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_marginStart="40dp"
         android:layout_marginEnd="40dp"
+        android:progressTint="@color/colorPrimary"
         android:layout_below="@+id/detailBudgetStatusTV"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
@@ -71,6 +72,34 @@
 
     </android.support.v7.widget.RecyclerView>
 
+    <LinearLayout
+        android:id="@+id/emptyListL"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:orientation="vertical">
+        <TextView
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="No Expense Found!"
+            android:textSize="20sp"/>
+
+        <Button
+            android:id="@+id/addExpBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_gravity="center_horizontal"
+            android:textColor="@color/white"
+            android:background="@color/colorPrimary"
+            android:text="Add"
+            android:textAllCaps="false"/>
+
+    </LinearLayout>
+
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/detailFab"
         android:layout_width="wrap_content"
@@ -79,6 +108,7 @@
         android:layout_alignParentBottom="true"
         android:backgroundTint="@color/colorPrimary"
         android:layout_margin="@dimen/fab_margin"
+        android:paddingBottom="16dp"
         app:srcCompat="@drawable/ic_add" />
 
 </RelativeLayout>

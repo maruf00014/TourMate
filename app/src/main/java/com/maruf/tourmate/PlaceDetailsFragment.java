@@ -55,8 +55,6 @@ public class PlaceDetailsFragment extends Fragment implements OnMapReadyCallback
     private RatingBar placeRatingBar;
     private TextView placeAddressTV;
 
-    private Location location;
-
     private GoogleMap map;
     private GoogleMapOptions options;
 
@@ -133,14 +131,6 @@ public class PlaceDetailsFragment extends Fragment implements OnMapReadyCallback
         }
     }
 
-    private void setMarker(Location location) {
-        if (map != null) {
-           // map.clear();
-            LatLng latLng = new LatLng(location.getLat(), location.getLng());
-            map.addMarker(new MarkerOptions().position(latLng));
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
-        }
-    }
 
     private void setMarker(LatLng startpoint, LatLng destination) {
         if (map != null) {
@@ -188,7 +178,7 @@ public class PlaceDetailsFragment extends Fragment implements OnMapReadyCallback
                         Polyline polyline = map.addPolyline(new PolylineOptions()
                                 .add(startPoint)
                                 .add(endPoint)
-                                .color(Color.BLUE));
+                                .color(getResources().getColor(R.color.colorPrimary)));
                     }
                 }
             }

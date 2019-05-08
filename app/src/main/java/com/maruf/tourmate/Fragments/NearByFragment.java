@@ -2,6 +2,7 @@ package com.maruf.tourmate.Fragments;
 
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -37,6 +38,7 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.maruf.tourmate.CheckConnectivity;
 import com.maruf.tourmate.Direction.DirectionResponse;
 import com.maruf.tourmate.Direction.DirectionService;
 import com.maruf.tourmate.Direction.Step;
@@ -64,8 +66,8 @@ public class NearByFragment extends Fragment implements OnMapReadyCallback {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 101;
     private static GoogleMap map;
     private GoogleMapOptions options;
-    private SupportMapFragment mapFragment;
     private Context context;
+    CheckConnectivity checkConnectivity = new CheckConnectivity();
 
     private Button findButton;
     private Spinner locationCategorySp;
@@ -104,6 +106,12 @@ public class NearByFragment extends Fragment implements OnMapReadyCallback {
             "8km",
             "10km"
     };
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        this.context = context;
+    }
 
 
     public NearByFragment() {
@@ -159,7 +167,16 @@ public class NearByFragment extends Fragment implements OnMapReadyCallback {
         findButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getNearbyPlaces();
+
+                if(checkConnectivity.isNetworkConnected(context)
+                        && checkConnectivity.internetIsConnected() ) {
+                    getNearbyPlaces();
+
+                }
+
+                else Toast.makeText(getActivity(),"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
+
             }
         });
 
@@ -236,11 +253,6 @@ public class NearByFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        this.context = context;
-    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {

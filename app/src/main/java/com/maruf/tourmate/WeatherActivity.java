@@ -44,7 +44,7 @@ public class WeatherActivity extends AppCompatActivity {
 
     SharedPreferences sharedPreferences;
     SharedPreferences.Editor editor;
-
+    CheckConnectivity checkConnectivity = new CheckConnectivity();
     double lat;
     double lon;
 
@@ -108,16 +108,26 @@ public class WeatherActivity extends AppCompatActivity {
     public void getData(){
 
 
-        if(sharedPreferences.getString("city","").equals("")){
+        if(checkConnectivity.isNetworkConnected(getApplicationContext())
+                && checkConnectivity.internetIsConnected() ) {
+            if(sharedPreferences.getString("city","").equals("")){
 
-            getDataByLatLon(lat,lon);
+                getDataByLatLon(lat,lon);
+
+
+            }
+            else {
+                getDataByCityName(sharedPreferences.getString("city",""));
+
+            }
 
 
         }
-        else {
-            getDataByCityName(sharedPreferences.getString("city",""));
 
-        }
+        else Toast.makeText(WeatherActivity.this,"Internet connection problem!",Toast.LENGTH_SHORT).show();
+
+
+
 
     }
 

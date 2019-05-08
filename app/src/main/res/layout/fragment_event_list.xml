@@ -15,15 +15,35 @@
 
 
     </android.support.v7.widget.RecyclerView>
-
-    <TextView
-        android:id="@+id/emptyListTV"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"
+    <LinearLayout
+        android:id="@+id/emptyListL"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:text=""/>
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:orientation="vertical">
+        <TextView
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="No Tour Found!"
+            android:textSize="20sp"/>
+
+        <Button
+            android:id="@+id/addEventBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_gravity="center_horizontal"
+            android:textColor="@color/white"
+            android:background="@color/colorPrimary"
+            android:text="Add"
+            android:textAllCaps="false"/>
+
+    </LinearLayout>
+
+
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/eventFab"
